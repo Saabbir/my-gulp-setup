@@ -1,6 +1,6 @@
 const currentTask   = process.env.npm_lifecycle_event
 const del           = require('del')
-const webpack       = require('webpack-stream')
+const webpackStream = require('webpack-stream')
 const browserSync   = require('browser-sync').create()
 const gulp          = require('gulp')
 const babel         = require('gulp-babel')
@@ -10,99 +10,83 @@ const sourcemaps    = require('gulp-sourcemaps')
 const imagemin      = require('gulp-imagemin')
 const htmlmin       = require('gulp-htmlmin')
 const autoprefixer  = require('gulp-autoprefixer')
+const usemin        = require('gulp-usemin')
+const rev           = require('gulp-rev')
+const cleanCSS      = require('gulp-clean-css')
 const sass          = require('gulp-sass')
 sass.compiler       = require('node-sass')
 
-let mode
+const PUBLISH_DIRECTORY = 'docs'
 
-if (currentTask === 'dev') {
-  mode = 'development'
-}
+let mode = currentTask === 'build' ? 'production' : 'development'
 
-if (currentTask === 'build') {
-  mode = 'production'
-}
-
-const paths = {
-  htmls: {
-    src: 'src/*.html',
-    dest: 'dist'
-  },
-  styles: {
-    src: 'src/scss/**/*.scss',
-    dest: 'dist'
-  },
-  scripts: {
-    src: 'src/scripts/**/*.js',
-    dest: 'dist'
-  },
-  images: {
-    src: 'src/images/**/*',
-    dest: 'dist/images'
-  },
-  fonts: {
-    src: 'src/fonts/**/*.*',
-    dest: 'dist/fonts'
-  }
-};
-
-// browser sync initialization function
-function startBrowserSync() {
+function startBrowserSync(dirname, port = 3000) {
   browserSync.init({
-    // injectChanges: false,
     notify: false,
+    port: port,
     server: {
-      baseDir: 'dist'
+      baseDir: dirname
     }
   });
 }
 
-// reloading browser function
-function reloadingBrowser(done) {
+function reloadBrowser(done) {
   browserSync.reload();
   done();
 }
 
-function clean() {
-  return del([ 'dist' ]);
-}
-
 function styles() {
   return gulp
-    .src(paths.styles.src)
+    .src('src/assets/scss/index.scss')
     .pipe(sourcemaps.init())
-    .pipe(sass({
-      outputStyle: 'compressed'
-    }).on('error', sass.logError))
+    .pipe(sass().on('error', sass.logError))
     .pipe(autoprefixer())
     .pipe(rename({
       basename: 'bundle',
-      suffix: '.min'
+      extname: ".css"
     }))
     .pipe(sourcemaps.write())
-    .pipe(gulp.dest(paths.styles.dest))
+    .pipe(gulp.dest('./src/temp'))
     .pipe(browserSync.stream())
 }
 
 function scripts() {
   return gulp
-    .src(paths.scripts.src)
+    .src('src/assets/js/index.js')
     .pipe(sourcemaps.init())
-    .pipe(webpack({
-      output: {
-        filename: 'bundle.min.js'
-      },
-      mode: mode,
+    .pipe(webpackStream({
+      mode: mode
     }))
     .pipe(babel())
-    .pipe(uglify())
     .pipe(sourcemaps.write())
-    .pipe(gulp.dest(paths.scripts.dest))
+    .pipe(rename({
+      basename: 'bundle',
+      extname: ".js"
+    }))
+    .pipe(gulp.dest('./src/temp'))
 }
 
-function optimizeImages() {
+function watch() {
+  startBrowserSync('src')
+  gulp.watch('./src/assets/scss/**/*.scss', styles)
+  gulp.watch('./src/assets/js/**/*.js', gulp.series(scripts, reloadBrowser))
+  gulp.watch('./src/*.html', reloadBrowser)
+}
+
+function buildProdHtmlCssAndJs() {
   return gulp
-    .src(paths.images.src)
+    .src('./src/*.html')
+    .pipe(usemin({
+      html: [ htmlmin({ collapseWhitespace: true }) ],
+      css: [ rev(), cleanCSS() ],
+      js: [ rev(), uglify() ]
+    }))
+    .pipe(gulp.dest(`./${PUBLISH_DIRECTORY}`))
+}
+
+function buildImages() {
+  return gulp
+    .src('./src/assets/images/**')
     .pipe(imagemin([
       imagemin.gifsicle({
         interlaced: true
@@ -124,40 +108,16 @@ function optimizeImages() {
         ]
       })
     ]))
-    .pipe(gulp.dest(paths.images.dest))
+    .pipe(gulp.dest(`./${PUBLISH_DIRECTORY}/assets/images`))
 }
 
-function copyImages() {
-  return gulp
-    .src(paths.images.src)
-    .pipe(gulp.dest(paths.images.dest))
+function clean() {
+  return del([`${PUBLISH_DIRECTORY}`, 'dist', 'docs']);
 }
 
-function copyFonts() {
-  return gulp
-    .src(paths.fonts.src)
-    .pipe(gulp.dest(paths.fonts.dest))
+function previewDist() {
+  startBrowserSync(`${PUBLISH_DIRECTORY}`, 3333)
 }
 
-function copyHtmls() {
-  return gulp
-    .src(paths.htmls.src)
-    .pipe(htmlmin({ collapseWhitespace: true }))
-    .pipe(gulp.dest(paths.htmls.dest))
-}
-
-function watch() {
-  gulp.watch(paths.styles.src, styles)
-  gulp.watch(paths.scripts.src, gulp.series(scripts, reloadingBrowser))
-  gulp.watch(paths.htmls.src, gulp.series(copyHtmls, reloadingBrowser))
-  gulp.watch(paths.images.src, gulp.series(copyImages, reloadingBrowser))
-  gulp.watch(paths.fonts.src, gulp.series(copyFonts, reloadingBrowser))
-}
-
-const dev = gulp.series(clean, gulp.parallel(startBrowserSync, copyHtmls, styles, scripts, copyImages, copyFonts, watch))
-const build = gulp.series(clean, gulp.parallel(copyHtmls, styles, scripts, optimizeImages, copyFonts))
-
-
-exports.dev = dev
-exports.build = build
-exports.default = dev
+exports.dev   = gulp.parallel(styles, scripts, watch)
+exports.build = gulp.series(clean, gulp.parallel(buildProdHtmlCssAndJs, buildImages), previewDist)
