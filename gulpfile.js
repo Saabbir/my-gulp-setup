@@ -46,7 +46,7 @@ function styles() {
       extname: ".css"
     }))
     .pipe(sourcemaps.write())
-    .pipe(gulp.dest('./src/temp'))
+    .pipe(gulp.dest('./src/assets/temp'))
     .pipe(browserSync.stream())
 }
 
@@ -63,7 +63,7 @@ function scripts() {
       basename: 'bundle',
       extname: ".js"
     }))
-    .pipe(gulp.dest('./src/temp'))
+    .pipe(gulp.dest('./src/assets/temp'))
 }
 
 function watch() {
@@ -77,9 +77,9 @@ function buildProdHtmlCssAndJs() {
   return gulp
     .src('./src/*.html')
     .pipe(usemin({
-      html: [ htmlmin({ collapseWhitespace: true }) ],
-      css: [ rev(), cleanCSS() ],
-      js: [ rev(), uglify() ]
+      html: [ () => htmlmin({ collapseWhitespace: true }) ],
+      css: [ () => rev(), () => cleanCSS() ],
+      js: [ () => rev(), () => uglify() ]
     }))
     .pipe(gulp.dest(`./${PUBLISH_DIRECTORY}`))
 }
@@ -112,7 +112,7 @@ function buildImages() {
 }
 
 function clean() {
-  return del([`${PUBLISH_DIRECTORY}`, 'dist', 'docs']);
+  return del([`${PUBLISH_DIRECTORY}`, 'dist', 'docs', 'public']);
 }
 
 function previewDist() {
