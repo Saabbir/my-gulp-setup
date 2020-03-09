@@ -13,6 +13,7 @@ const autoprefixer  = require('gulp-autoprefixer')
 const usemin        = require('gulp-usemin')
 const rev           = require('gulp-rev')
 const cleanCSS      = require('gulp-clean-css')
+const purgecss      = require('gulp-purgecss')
 const sass          = require('gulp-sass')
 sass.compiler       = require('node-sass')
 
@@ -44,6 +45,10 @@ function styles() {
     .pipe(rename({
       basename: 'bundle',
       extname: ".css"
+    }))
+    .pipe(purgecss({
+      content: ['src/*.html'],
+      whitelistPatterns: [/^slick-/],
     }))
     .pipe(sourcemaps.write())
     .pipe(gulp.dest('./src/assets/temp'))
