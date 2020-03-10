@@ -60,14 +60,19 @@ function scripts() {
     .src('src/assets/js/index.js')
     .pipe(sourcemaps.init())
     .pipe(webpackStream({
-      mode: mode
+      mode: mode,
+      output: {
+        filename: 'bundle.js',
+        chunkFilename: 'vendors.js',
+      },
+      optimization: {
+        splitChunks: {
+          chunks: 'all'
+        }
+      }
     }))
     .pipe(babel())
     .pipe(sourcemaps.write())
-    .pipe(rename({
-      basename: 'bundle',
-      extname: ".js"
-    }))
     .pipe(gulp.dest('./src/assets/temp'))
 }
 
@@ -124,5 +129,6 @@ function previewDist() {
   startBrowserSync(`${PUBLISH_DIRECTORY}`, 3333)
 }
 
+exports.generateBundleCSSAndJS = gulp.parallel(styles, scripts)
 exports.dev   = gulp.parallel(styles, scripts, watch)
 exports.build = gulp.series(clean, styles, scripts, gulp.parallel(buildProdHtmlCssAndJs, buildImages), previewDist)
