@@ -125,4 +125,4 @@ function previewDist() {
 }
 
 exports.dev   = gulp.parallel(styles, scripts, watch)
-exports.build = gulp.series(clean, gulp.parallel(buildProdHtmlCssAndJs, buildImages), previewDist)
+exports.build = gulp.series(clean, styles, scripts, gulp.parallel(buildProdHtmlCssAndJs, buildImages), previewDist)
