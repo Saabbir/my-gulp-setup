@@ -71,7 +71,6 @@ function scripts() {
         }
       }
     }))
-    .pipe(babel())
     .pipe(sourcemaps.write())
     .pipe(gulp.dest('./src/assets/temp'))
 }
@@ -89,7 +88,7 @@ function buildProdHtmlCssAndJs() {
     .pipe(usemin({
       html: [ () => htmlmin({ collapseWhitespace: true }) ],
       css: [ () => rev(), () => cleanCSS() ],
-      js: [ () => rev(), () => uglify() ]
+      js: [ () => rev(), () => babel(), () => uglify() ]
     }))
     .pipe(gulp.dest(`./${PUBLISH_DIRECTORY}`))
 }
